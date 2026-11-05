@@ -1,0 +1,15 @@
+{
+  "name": "@link-click/validation",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "jest"
+  },
+  "dependencies": {
+    "zod": "^3.23.4"
+  }
+}

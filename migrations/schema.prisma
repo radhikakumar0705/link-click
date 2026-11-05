@@ -1,0 +1,129 @@
+// Prisma schema for link-click
+// Maps to the PostgreSQL tables defined in the technical spec §4.2
+// Run: prisma migrate dev --schema=migrations/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            BigInt    @id @default(autoincrement())
+  email         String    @unique @db.VarChar(255)
+  passwordHash  String?   @db.VarChar(255) @map("password_hash")
+  oauthProvider String?   @db.VarChar(50)  @map("oauth_provider")
+  oauthId       String?   @db.VarChar(255) @map("oauth_id")
+  displayName   String?   @db.VarChar(100) @map("display_name")
+  tier          String    @default("free") @db.VarChar(20)
+  isActive      Boolean   @default(true)   @map("is_active")
+  createdAt     DateTime  @default(now())  @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt       @map("updated_at") @db.Timestamptz()
+
+  urls    Url[]
+  apiKeys ApiKey[]
+
+  @@map("users")
+}
+
+// ─── URLs ─────────────────────────────────────────────────────────────────────
+
+model Url {
+  id           BigInt    @id @default(autoincrement())
+  shortCode    String    @unique @db.VarChar(12)  @map("short_code")
+  longUrl      String    @db.Text                  @map("long_url")
+  longUrlHash  String    @db.Char(64)              @map("long_url_hash")
+  userId       BigInt?                              @map("user_id")
+  isCustom     Boolean   @default(false)            @map("is_custom")
+  isActive     Boolean   @default(true)             @map("is_active")
+  isFlagged    Boolean   @default(false)            @map("is_flagged")
+  passwordHash String?   @db.VarChar(255)           @map("password_hash")
+  maxClicks    Int?                                  @map("max_clicks")
+  clickCount   Int       @default(0)                @map("click_count")
+  expiresAt    DateTime? @db.Timestamptz()           @map("expires_at")
+  createdAt    DateTime  @default(now()) @db.Timestamptz() @map("created_at")
+  updatedAt    DateTime  @updatedAt      @db.Timestamptz() @map("updated_at")
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tags     UrlTag[]
+
+  @@index([shortCode],   name: "idx_urls_short_code")
+  @@index([longUrlHash], name: "idx_urls_long_url_hash")
+  @@index([userId],      name: "idx_urls_user_id")
+  @@index([expiresAt],   name: "idx_urls_expires_at")
+  @@map("urls")
+}
+
+// ─── URL Tags (many-to-many) ──────────────────────────────────────────────────
+
+model UrlTag {
+  urlId BigInt @map("url_id")
+  tag   String @db.VarChar(50)
+
+  url Url @relation(fields: [urlId], references: [id], onDelete: Cascade)
+
+  @@id([urlId, tag])
+  @@index([urlId], name: "idx_url_tags_url_id")
+  @@map("url_tags")
+}
+
+// ─── Clicks (note: partitioning by month is handled via raw SQL migration) ────
+//
+// Prisma does not natively support declarative partitioned tables.
+// The `clicks` table is created via a raw SQL migration (see migrations/).
+// This model is used only for type-safe queries within the Kafka consumer.
+
+model Click {
+  id              BigInt    @id @default(autoincrement())
+  shortCode       String    @db.VarChar(12)  @map("short_code")
+  clickedAt       DateTime  @default(now()) @db.Timestamptz() @map("clicked_at")
+  ipHash          String?   @db.Char(64)     @map("ip_hash")
+  userAgent       String?   @db.Text         @map("user_agent")
+  country         String?   @db.Char(2)
+  city            String?   @db.VarChar(100)
+  deviceType      String?   @db.VarChar(20)  @map("device_type")
+  browser         String?   @db.VarChar(50)
+  os              String?   @db.VarChar(50)
+  referrer        String?   @db.Text
+  referrerDomain  String?   @db.VarChar(100) @map("referrer_domain")
+  isUnique        Boolean   @default(false)  @map("is_unique")
+
+  @@map("clicks")
+}
+
+// ─── Hourly Analytics Summaries ───────────────────────────────────────────────
+
+model ClickHourlySummary {
+  shortCode    String   @db.VarChar(12) @map("short_code")
+  hourBucket   DateTime @db.Timestamptz() @map("hour_bucket")
+  totalClicks  Int      @default(0) @map("total_clicks")
+  uniqueClicks Int      @default(0) @map("unique_clicks")
+  countryTop   Json?    @map("country_top")
+  deviceTop    Json?    @map("device_top")
+
+  @@id([shortCode, hourBucket])
+  @@map("click_hourly_summary")
+}
+
+// ─── API Keys ─────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id         BigInt    @id @default(autoincrement())
+  userId     BigInt    @map("user_id")
+  keyHash    String    @unique @db.Char(64) @map("key_hash")
+  label      String?   @db.VarChar(100)
+  lastUsedAt DateTime? @db.Timestamptz() @map("last_used_at")
+  isActive   Boolean   @default(true)    @map("is_active")
+  createdAt  DateTime  @default(now())   @db.Timestamptz() @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}

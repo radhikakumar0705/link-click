@@ -1,0 +1,32 @@
+{
+  "name": "@link-click/redirect-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@link-click/base62": "*",
+    "@link-click/types": "*",
+    "@prisma/client": "^5.14.0",
+    "fastify": "^4.27.0",
+    "@fastify/helmet": "^11.1.1",
+    "ioredis": "^5.3.2",
+    "kafkajs": "^2.2.4",
+    "pino": "^9.1.0",
+    "ua-parser-js": "^1.0.38",
+    "zod": "^3.23.4",
+    "bcrypt": "^5.1.1",
+    "fastify-plugin": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/ua-parser-js": "^0.7.39",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5",
+    "@types/bcrypt": "^5.0.2",
+    "prisma": "^5.14.0"
+  }
+}

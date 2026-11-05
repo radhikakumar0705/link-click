@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fixed popup size avoids the window resizing as tabs switch. */
+html,
+body {
+  width: 380px;
+  height: 540px;
+  margin: 0;
+  overflow: hidden;
+  background: #fff;
+  color: #1f2937;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+#root {
+  height: 100%;
+}
+
+@layer components {
+  .input {
+    @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none bg-white
+      focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition disabled:bg-gray-50;
+  }
+  .btn-primary {
+    @apply w-full py-2.5 px-4 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg
+      transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none
+      focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+  }
+  .btn-secondary {
+    @apply px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition
+      disabled:opacity-50;
+  }
+  .label {
+    @apply text-[11px] text-gray-500 font-semibold uppercase tracking-wide;
+  }
+  .alert-error {
+    @apply text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2;
+  }
+  .alert-warn {
+    @apply text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2;
+  }
+  .spinner {
+    @apply inline-block animate-spin rounded-full border-2 border-current border-t-transparent;
+  }
+}
+
+.scrollable {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
+}

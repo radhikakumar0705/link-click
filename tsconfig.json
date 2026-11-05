@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./shared/types" },
+    { "path": "./shared/base62" },
+    { "path": "./shared/validation" },
+    { "path": "./services/write-service" },
+    { "path": "./services/redirect-service" },
+    { "path": "./services/analytics-service" },
+    { "path": "./services/kafka-consumer" }
+  ]
+}
