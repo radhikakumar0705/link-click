@@ -25,38 +25,37 @@ export const longUrlSchema = z
   .string()
   .max(2048, 'URL must be 2048 characters or fewer')
   .transform((url) => url.trim())
-  .refine(
-    (url) => {
-      try {
-        new URL(url);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    { message: 'Must be a valid URL including scheme (https://...)' },
-  )
-  .refine(
-    (url) => {
-      const { protocol } = new URL(url);
-      return protocol === 'https:' || protocol === 'http:';
-    },
-    { message: 'Only http and https URLs are supported' },
-  )
-  .refine(
-    (url) => {
-      const { hostname } = new URL(url);
-      return !PRIVATE_IP_REGEX.test(hostname);
-    },
-    { message: 'Private or loopback IP addresses cannot be shortened (SSRF prevention)' },
-  );
+  // One superRefine, not chained .refine()s: Zod runs every refinement even after
+  // one fails, so later checks calling new URL() on an invalid URL used to throw,
+  // making safeParse throw and POST /shorten return 500 instead of 400.
+  .superRefine((url, ctx) => {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Must be a valid URL including scheme (https://...)' });
+      return;
+    }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Only http and https URLs are supported' });
+      return;
+    }
+    if (PRIVATE_IP_REGEX.test(parsed.hostname)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Private or loopback IP addresses cannot be shortened (SSRF prevention)',
+      });
+    }
+  });
 
 // ─── Custom alias validation ──────────────────────────────────────────────────
 
 export const customAliasSchema = z
   .string()
   .min(3, 'Custom alias must be at least 3 characters')
-  .max(50, 'Custom alias must be 50 characters or fewer')
+  // 12 = short_code column width; must match isValidShortCode in @link-click/base62,
+  // otherwise aliases get created that the redirect service then refuses to serve.
+  .max(12, 'Custom alias must be 12 characters or fewer')
   .regex(/^[a-zA-Z0-9_-]+$/, 'Only letters, numbers, hyphens, and underscores are allowed')
   .refine((alias) => !RESERVED_ALIASES.has(alias.toLowerCase()), {
     message: 'This alias is reserved and cannot be used',

@@ -39,6 +39,7 @@ fs.writeFileSync('.env', [
   'SHORT_BASE_URL=http://localhost:3002',
   'EXTENSION_ORIGIN=chrome-extension://placeholder',
   'COOKIE_SECRET=local-dev-cookie-secret-32chars!!',
+  'IP_HASH_SECRET=' + crypto.randomBytes(32).toString('hex'),
   'NODE_ENV=development',
   'LOG_LEVEL=info',
   'FREE_TIER_ANALYTICS_DAYS=7',

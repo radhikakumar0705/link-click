@@ -57,8 +57,14 @@ describe('Base62 encode/decode', () => {
       expect(isValidShortCode('aB3kP9xYzW12')).toBe(true);
     });
 
-    it('rejects codes shorter than 6 characters', () => {
-      expect(isValidShortCode('abc')).toBe(false);
+    it('accepts custom aliases: 3+ chars with - and _', () => {
+      expect(isValidShortCode('abc')).toBe(true);
+      expect(isValidShortCode('my-link')).toBe(true);
+      expect(isValidShortCode('my_link')).toBe(true);
+    });
+
+    it('rejects codes shorter than 3 characters', () => {
+      expect(isValidShortCode('ab')).toBe(false);
     });
 
     it('rejects codes longer than 12 characters', () => {

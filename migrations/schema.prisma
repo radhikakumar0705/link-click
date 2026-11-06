@@ -77,8 +77,9 @@ model UrlTag {
 // ─── Clicks (note: partitioning by month is handled via raw SQL migration) ────
 //
 // Prisma does not natively support declarative partitioned tables.
-// The `clicks` table is created via a raw SQL migration (see migrations/).
-// This model is used only for type-safe queries within the Kafka consumer.
+// A plain (unpartitioned) table in v1. Monthly range partitioning (spec §4.2.3)
+// is planned; it needs a hand-written migration because Prisma can't express
+// PARTITION BY, and the primary key must become (id, clicked_at). See docs/DESIGN.md.
 
 model Click {
   id              BigInt    @id @default(autoincrement())
@@ -95,6 +96,8 @@ model Click {
   referrerDomain  String?   @db.VarChar(100) @map("referrer_domain")
   isUnique        Boolean   @default(false)  @map("is_unique")
 
+  // Every analytics query filters by short_code and a clicked_at range.
+  @@index([shortCode, clickedAt(sort: Desc)], map: "idx_clicks_short_code_clicked_at")
   @@map("clicks")
 }
 

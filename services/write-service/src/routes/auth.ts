@@ -107,7 +107,9 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       const hash = crypto.createHash('sha256').update(raw).digest('hex');
-      const userId = await fastify.redis.get(`refresh:${hash}`);
+      // GETDEL (atomic): a refresh token is single-use. GET-then-DEL let two
+      // concurrent requests both read the token and both get new token pairs.
+      const userId = await fastify.redis.getdel(`refresh:${hash}`);
 
       if (!userId) {
         return reply.code(401).send({
@@ -123,12 +125,10 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       });
 
       if (!user || !user.isActive) {
-        await fastify.redis.del(`refresh:${hash}`);
         return reply.code(401).send({ statusCode: 401, error: 'Unauthorized' });
       }
 
-      // Rotate — delete old token, issue new one (single-use refresh tokens)
-      await fastify.redis.del(`refresh:${hash}`);
+      // Rotate: the old token was already consumed by GETDEL; issue a new one.
       const { raw: newRaw, hash: newHash } = generateRefreshToken();
       await fastify.redis.set(`refresh:${newHash}`, user.id.toString(), 'EX', REFRESH_TTL_SECONDS);
 

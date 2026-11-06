@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { paginationSchema } from '@link-click/validation';
+import { env } from '../lib/env';
 
 export async function linksRoutes(fastify: FastifyInstance): Promise<void> {
   /**
@@ -36,7 +37,7 @@ export async function linksRoutes(fastify: FastifyInstance): Promise<void> {
         fastify.prisma.url.count({ where }),
       ]);
 
-      const baseUrl = process.env.SHORT_BASE_URL ?? 'https://snplink.io';
+      const baseUrl = env.SHORT_BASE_URL;
 
       return reply.send({
         data: urls.map((u) => ({

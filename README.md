@@ -91,12 +91,12 @@ link-click/
 ├── extension/              # React 18 · Vite · Tailwind · Manifest V3
 ├── migrations/             # Prisma schema → all database tables
 ├── infra/
-│   ├── docker-compose.yml  # Postgres · Redis · Kafka · Kafka UI
-│   └── terraform/          # Full AWS production infrastructure
+│   └── docker-compose.yml  # Postgres · Redis · Kafka · Kafka UI (local dev)
+├── scripts/with-env.mjs    # loads .env for npm run dev / migrate
 ├── docs/
-│   ├── DESIGN.md           # Architecture Decision Records (why, not just what)
+│   ├── DESIGN.md           # Architecture Decision Records, deployment, known limitations
 │   └── WINDOWS.md          # Windows PowerShell setup guide
-└── .github/workflows/      # CI: lint → test → build → deploy with canary
+└── .github/workflows/      # CI: lint → test → build images + extension → migrate on release tags
 ```
 
 ---
@@ -148,6 +148,6 @@ npm test
 
 ## Deploying for free
 
-See the deployment section in [docs/DESIGN.md](docs/DESIGN.md).
+See [Deployment in docs/DESIGN.md](docs/DESIGN.md#deployment).
 
 Short version: Supabase (Postgres) + Upstash (Redis) + Railway (services) = **$0/month** for low traffic.

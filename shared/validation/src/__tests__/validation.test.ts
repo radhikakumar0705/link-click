@@ -1,3 +1,4 @@
+import { isValidShortCode } from '@link-click/base62';
 import { longUrlSchema, customAliasSchema, RESERVED_ALIASES } from '../index';
 
 describe('longUrlSchema', () => {
@@ -58,7 +59,7 @@ describe('customAliasSchema', () => {
   });
 
   it('accepts aliases with underscores', () => {
-    expect(customAliasSchema.safeParse('my_product_v2').success).toBe(true);
+    expect(customAliasSchema.safeParse('my_product_2').success).toBe(true);
   });
 
   it('accepts alphanumeric aliases', () => {
@@ -69,8 +70,19 @@ describe('customAliasSchema', () => {
     expect(customAliasSchema.safeParse('ab').success).toBe(false);
   });
 
-  it('rejects aliases longer than 50 characters', () => {
-    expect(customAliasSchema.safeParse('a'.repeat(51)).success).toBe(false);
+  it('accepts aliases up to 12 characters (the short_code column width)', () => {
+    expect(customAliasSchema.safeParse('a'.repeat(12)).success).toBe(true);
+  });
+
+  it('rejects aliases longer than 12 characters', () => {
+    expect(customAliasSchema.safeParse('a'.repeat(13)).success).toBe(false);
+  });
+
+  it('only accepts aliases the redirect service will serve', () => {
+    for (const alias of ['abc', 'my-link', 'my_link', 'launch2025', 'a'.repeat(12)]) {
+      expect(customAliasSchema.safeParse(alias).success).toBe(true);
+      expect(isValidShortCode(alias)).toBe(true);
+    }
   });
 
   it('rejects aliases with spaces', () => {

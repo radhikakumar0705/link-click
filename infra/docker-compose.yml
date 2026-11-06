@@ -29,7 +29,10 @@ services:
     image: redis:7-alpine
     container_name: link-click-redis
     restart: unless-stopped
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # noeviction: Redis holds refresh tokens, rate-limit counters and click-limit
+    # counters, which must never be silently evicted (allkeys-lru logged users out
+    # under memory pressure). Upstash also defaults to noeviction.
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction
     ports:
       - '6379:6379'
     volumes:

@@ -104,7 +104,20 @@ async function runDailyMaintenance(fastify: FastifyInstance): Promise<void> {
     });
     fastify.log.info({ count: expired.count }, 'Expired links deactivated');
 
-    // Create next month's clicks partition if it doesn't exist yet
+    // Create next month's clicks partition — only if clicks is actually partitioned.
+    // In v1 it's a plain table (see migrations/schema.prisma), and CREATE ... PARTITION OF
+    // a plain table fails, which used to make this job error every night.
+    const [{ partitioned }] = await fastify.prisma.$queryRaw<[{ partitioned: boolean }]>`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_partitioned_table p JOIN pg_class c ON c.oid = p.partrelid
+        WHERE c.relname = 'clicks' AND c.relnamespace = 'public'::regnamespace
+      ) AS partitioned
+    `;
+    if (!partitioned) {
+      fastify.log.info('clicks is not partitioned; skipping partition creation');
+      return;
+    }
+
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const partitionStart = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 1);

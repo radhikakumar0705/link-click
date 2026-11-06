@@ -104,7 +104,7 @@ export default function ShortenTab(): React.ReactElement {
                 value={customAlias}
                 onChange={(e) => setCustomAlias(e.target.value)}
                 className="input"
-                maxLength={30}
+                maxLength={12}
               />
               {aliasProblem && <div className="text-[11px] text-red-600">{aliasProblem}</div>}
               <label className="text-xs text-gray-500" htmlFor="exp">Expires (optional)</label>

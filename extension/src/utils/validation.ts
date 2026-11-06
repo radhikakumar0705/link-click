@@ -6,7 +6,8 @@
 const PRIVATE_HOST =
   /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|0\.0\.0\.0|\[::1\]|.*\.local|.*\.localhost)$/i;
 
-export const ALIAS_PATTERN = /^[a-zA-Z0-9_-]{3,30}$/;
+// Matches customAliasSchema / isValidShortCode on the server (12 = short_code column width).
+export const ALIAS_PATTERN = /^[a-zA-Z0-9_-]{3,12}$/;
 const RESERVED_ALIASES = new Set(['api', 'auth', 'admin', 'static', 'health', 'user', 'analytics']);
 
 /** Returns null if the URL can be shortened, otherwise a user-facing reason. */
@@ -29,7 +30,7 @@ export function unshortenableReason(raw: string): string | null {
 
 export function aliasError(alias: string): string | null {
   if (!alias) return null;
-  if (!ALIAS_PATTERN.test(alias)) return 'Alias must be 3–30 characters: letters, numbers, - or _.';
+  if (!ALIAS_PATTERN.test(alias)) return 'Alias must be 3–12 characters: letters, numbers, - or _.';
   if (RESERVED_ALIASES.has(alias.toLowerCase())) return `"${alias}" is reserved.`;
   return null;
 }

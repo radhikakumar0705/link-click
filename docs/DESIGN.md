@@ -36,7 +36,9 @@ Base62 encoding of a monotonically increasing integer is collision-free by const
 2. **Link updates** — if you change the destination URL, users who already visited see the old one forever.
 3. **Features** — expiry checking, max-clicks enforcement, and password prompts all require the request to reach the server.
 
-302 keeps every request hitting the server (or CDN edge). CloudFront caches 302 responses for 5 minutes for anonymous users, reducing origin load by ~95% for viral links while preserving full control.
+302 keeps every request hitting the server. Redirects are also sent with `Cache-Control: no-store`, so no browser or CDN caches them: every visit must reach the redirect service to be counted and to have expiry, click limits and passwords enforced. Load is handled in Redis instead (sub-5 ms cache hits).
+
+The original spec put CloudFront in front, caching 302s for 5 minutes. That's not deployed, and it would conflict with the above: edge hits are never counted and skip the checks. If a CDN is added later for viral links, it should cache only links with no expiry, limit or password, and click counting would have to move to edge logs.
 
 ---
 
@@ -84,12 +86,48 @@ Refresh token operations are high-frequency: every token rotation, every 55-minu
 
 ## ADR-006: Daily-Rotating Salt for IP Hashing
 
-**Decision:** Client IPs are hashed as `SHA-256(IP + daily_salt)` before any persistence. Raw IPs are never stored.
+**Decision:** Client IPs are hashed before any persistence, and raw IPs are never stored:
+
+```
+day_key = HMAC-SHA256(IP_HASH_SECRET, "ip-day-key:" + UTC date)
+ip_hash = HMAC-SHA256(day_key, ip)
+```
+
+- **`IP_HASH_SECRET` must be secret** (env var, required in production). There are only ~4.3 billion IPv4 addresses, so an unkeyed or guessable salt can be brute-forced in minutes on a GPU. An earlier version derived the salt from the date plus a constant string, which anyone could recompute.
+- **The date is read per request,** so the key rotates at UTC midnight. An earlier version computed it once at process start, so it only rotated when the service restarted.
+- **Unique visitors** = first visit from an `ip_hash` to a link that day, decided in the redirect service with an atomic Redis `SET NX` (not per consumer batch). So "unique" means *unique per day*; a 7-day total sums daily uniques.
 
 **Why:**
 
 GDPR Article 4(1) classifies IP addresses as personal data. Storing raw IPs without consent and a legal basis is a violation.
 
-The daily rotation gives us: unique visitor counting within a 24-hour window (same IP → same hash on the same day), but no cross-day tracking (same IP produces a different hash each day — cannot track individuals over time). The hash is computationally irreversible — an HMAC with an unknown rotating salt cannot be reversed to the original IP.
+The daily rotation gives us unique-visitor counting within a day (same IP → same hash on the same day) but no cross-day tracking (a different hash each day). Because the key is secret, the hash can't be reversed by enumerating the IPv4 space.
 
 This satisfies GDPR's data minimisation principle while preserving the analytical value of unique-visitor counting.
+
+---
+
+## Deployment
+
+Target: **Railway** (the four services, built from their Dockerfiles) + **Supabase** (Postgres) + **Upstash** (Redis). Kafka needs a hosted broker too (any Kafka-compatible service; set `KAFKA_BROKERS`).
+
+1. Create the Supabase project, Upstash database and Kafka broker.
+2. On Railway, create one service per folder in `services/`, each using its `Dockerfile`.
+3. Set environment variables on every service, the same keys as `.env`. Production also needs:
+   - `NODE_ENV=production`
+   - `IP_HASH_SECRET`: a 64-char random hex string (`openssl rand -hex 32`); redirect service, required
+   - `EXTENSION_ORIGIN=chrome-extension://<your extension id>`: write and analytics services, for CORS
+   - `SHORT_BASE_URL`: the public URL of the redirect service
+4. Apply migrations: push a `v*` tag (CI runs `prisma migrate deploy` with the `PROD_DATABASE_URL`/`PROD_DIRECT_URL` secrets), or run `npm run migrate:deploy` locally with those URLs.
+
+Redis must use the `noeviction` policy (Upstash's default): it stores refresh tokens and rate-limit/click-limit counters that must not be evicted.
+
+---
+
+## Known limitations (v1)
+
+- **No geolocation.** `country` and `city` are always null: there's no GeoIP lookup yet, so the countries breakdown is empty. Adding one (e.g. MaxMind GeoLite2, looked up in the redirect service before hashing) is self-contained.
+- **`clicks` isn't partitioned.** The spec's monthly range partitioning needs a hand-written migration (Prisma can't express `PARTITION BY`, and the primary key must become `(id, clicked_at)`). The nightly job checks first and skips partition creation until then.
+- **Analytics totals lag up to 5 minutes.** Summary totals and the daily chart read `click_hourly_summary`, which a job refreshes every 5 minutes; referrers read raw clicks and are live.
+- **Unique visitors are per day** (see ADR-006).
+- **Click delivery is at-least-once.** If the consumer crashes after writing a batch but before committing its offset, that batch is written again on restart, slightly over-counting. Exactly-once would need an idempotency key per event.

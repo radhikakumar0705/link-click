@@ -8,8 +8,8 @@
     "services/*"
   ],
   "scripts": {
-    "dev": "concurrently -n write,redirect,analytics -c blue,green,yellow \"npm run dev -w @link-click/write-service\" \"npm run dev -w @link-click/redirect-service\" \"npm run dev -w @link-click/analytics-service\"",
-    "dev:full": "concurrently -n write,redirect,analytics,consumer -c blue,green,yellow,magenta \"npm run dev -w @link-click/write-service\" \"npm run dev -w @link-click/redirect-service\" \"npm run dev -w @link-click/analytics-service\" \"npm run dev -w @link-click/kafka-consumer\"",
+    "dev": "node scripts/with-env.mjs concurrently -n write,redirect,analytics -c blue,green,yellow \"npm run dev -w @link-click/write-service\" \"npm run dev -w @link-click/redirect-service\" \"npm run dev -w @link-click/analytics-service\"",
+    "dev:full": "node scripts/with-env.mjs concurrently -n write,redirect,analytics,consumer -c blue,green,yellow,magenta \"npm run dev -w @link-click/write-service\" \"npm run dev -w @link-click/redirect-service\" \"npm run dev -w @link-click/analytics-service\" \"npm run dev -w @link-click/kafka-consumer\"",
     "build": "npm run build -w @link-click/types && npm run build -w @link-click/base62 && npm run build -w @link-click/validation && npm run build -w @link-click/write-service && npm run build -w @link-click/redirect-service && npm run build -w @link-click/analytics-service && npm run build -w @link-click/kafka-consumer",
     "lint": "eslint 'shared/*/src/**/*.ts' 'services/*/src/**/*.ts' --max-warnings 0",
     "type-check": "tsc --noEmit",
@@ -17,11 +17,12 @@
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
-    "migrate": "prisma migrate dev --schema=migrations/schema.prisma",
-    "migrate:deploy": "prisma migrate deploy --schema=migrations/schema.prisma",
+    "migrate": "node scripts/with-env.mjs prisma migrate dev --schema=migrations/schema.prisma",
+    "migrate:deploy": "node scripts/with-env.mjs prisma migrate deploy --schema=migrations/schema.prisma",
     "generate": "prisma generate --schema=migrations/schema.prisma"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "concurrently": "^8.2.2",

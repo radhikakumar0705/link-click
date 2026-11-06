@@ -50,11 +50,16 @@ export function decode(code: string): bigint {
   return result;
 }
 
+/** Width of the short_code column (VARCHAR(12)). */
+export const SHORT_CODE_MAX_LENGTH = 12;
+
 /**
- * Validate that a string is a well-formed Base62 short code.
- * Used for input validation before DB lookups.
+ * Validate that a string could be a short code, before any DB lookup.
+ * Short codes are either generated (Base62, ≥ 6 chars) or custom aliases
+ * (3–12 chars of letters, digits, '-' and '_' — see customAliasSchema), so this
+ * accepts the union of both. It must never reject something the API can create.
  */
+const SHORT_CODE_PATTERN = new RegExp(`^[A-Za-z0-9_-]{3,${SHORT_CODE_MAX_LENGTH}}$`);
 export function isValidShortCode(code: string): boolean {
-  if (code.length < MIN_LENGTH || code.length > 12) return false;
-  return [...code].every((char) => ALPHABET.includes(char));
+  return SHORT_CODE_PATTERN.test(code);
 }
